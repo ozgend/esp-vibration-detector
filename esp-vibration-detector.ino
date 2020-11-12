@@ -20,9 +20,6 @@ void publishSensorValues()
   Serial.print(sensorValues.GyroY);
   Serial.print("\t");
   Serial.print(sensorValues.GyroZ);
-  Serial.print("\t");
-  Serial.print(sensorValues.isThresholdExceeded ? -10000 : 0);
-  Serial.print("\t");
   Serial.println("");
 }
 

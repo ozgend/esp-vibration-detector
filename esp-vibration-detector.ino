@@ -10,8 +10,8 @@
 MPU6050Module mpuSensor(I2C_MPU_DEVICE_REGISTER);
 
 MPU6050Data sensorValues;
-MPU6050Data minThreshold = {0, 0, 0, 0, -871, -719, -190};
-MPU6050Data maxThreshold = {0, 0, 0, 0, -22, 90, 225};
+MPU6050Data minThreshold = {0, 0, 0, 0, -877, -182, 82};
+MPU6050Data maxThreshold = {0, 0, 0, 0, -710, -16, 222};
 
 void publishSensorValues()
 {

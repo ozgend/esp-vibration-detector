@@ -48,6 +48,12 @@ void MPU6050Module::setThreshold(MPU6050Data *min, MPU6050Data *max)
 
 bool MPU6050Module::isThresholdExceeded(MPU6050Data *data)
 {
+  // faulty data check
+  if ((data->GyroX == -1 * data->GyroY == -1 * data->GyroZ) == -1)
+  {
+    return false;
+  }
+
   if (data->GyroX > _maxThreshold->GyroX || data->GyroX < _minThreshold->GyroX || data->GyroY > _maxThreshold->GyroY || data->GyroY < _minThreshold->GyroY || data->GyroZ > _maxThreshold->GyroZ || data->GyroZ < _minThreshold->GyroZ)
   {
     return true;

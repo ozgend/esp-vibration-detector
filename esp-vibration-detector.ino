@@ -13,20 +13,23 @@
 #define PIN_LED_SENSOR 13
 #define COLLECTION_BUFFER 256
 #define COLLECTION_COOLDOWN_MILLIS 750
-#define SENSOR_VALUE_SCALING 1000
+
+const bool sandbox = false;
 
 MPU6050Module mpuSensor(I2C_MPU_DEVICE_REGISTER);
-
 MPU6050Data sensorValues;
-MPU6050Data minThreshold = {0, 0, 0, 0, -877, -182, 82};
-MPU6050Data maxThreshold = {0, 0, 0, 0, -710, -16, 222};
 
-int sensorCollectionSize = 0;
-String serializedPayload;
+// covers E 1.5
+MPU6050Data minThreshold = {0.0727};
+MPU6050Data maxThreshold = {0.0827};
 
-long xyzVectorValues[COLLECTION_BUFFER];
+int sensorVectorCollectionSize = 0;
+float sensorVectorValues[COLLECTION_BUFFER];
+
 long sensorNextCooldownMillis = 0;
 bool isCollectionRunning = false;
+
+String serializedPayload;
 
 String serializeSensorValues()
 {
@@ -35,53 +38,56 @@ String serializeSensorValues()
   DynamicJsonDocument payload(1024);
   JsonArray items = payload.to<JsonArray>();
 
-  for (int i = 0; i <= sensorCollectionSize; i++)
+  for (int i = 0; i <= sensorVectorCollectionSize; i++)
   {
-    items.add(xyzVectorValues[i]);
+    items.add(sensorVectorValues[i]);
   }
 
   serializeJson(payload, serializedPayload);
 
-  memset(xyzVectorValues, 0, sizeof(xyzVectorValues));
-  sensorCollectionSize = 0;
-
   Serial.println("payload created.");
-  Serial.println("payload reset.");
 
   return serializedPayload;
 }
 
 void collectSensorValues()
 {
-  if (sensorCollectionSize >= COLLECTION_BUFFER)
+  if (sensorVectorCollectionSize >= COLLECTION_BUFFER)
   {
     publishSensorValues();
+    memset(sensorVectorValues, 0, sizeof(sensorVectorValues));
+    sensorVectorCollectionSize = 0;
   }
 
-  xyzVectorValues[sensorCollectionSize] = (int)(sensorValues.vector / SENSOR_VALUE_SCALING);
+  sensorVectorValues[sensorVectorCollectionSize] = sensorValues.Vector;
 
-  sensorCollectionSize++;
+  sensorVectorCollectionSize++;
 }
 
 void publishSensorValues()
 {
-  if (sensorCollectionSize > 0)
+  if (sensorVectorCollectionSize > 0 && !sandbox)
   {
     Serial.println("publishing payload...");
-    //publishTelemetry(serializeSensorValues());
+    publishTelemetry(serializeSensorValues());      
     Serial.println("payload published.");
   }
 }
 
 void plotSensorValues()
 {
-  Serial.print(sensorValues.vector);
+  /*
+  Serial.print(sensorValues.GyroX);
+  Serial.print("\t");  
+  Serial.print(sensorValues.GyroY);
+  Serial.print("\t");  
+  Serial.print(sensorValues.GyroZ);
   Serial.print("\t");
-  Serial.print(minThreshold.vector);
+  */    
+  Serial.print(sensorValues.Vector,6);
   Serial.print("\t");
-  Serial.print(maxThreshold.vector);
-  Serial.print("\t");
-  Serial.print(isCollectionRunning ? 5000 : 0);
+  Serial.print(isCollectionRunning ? 0.1 : 0.0);
+  
   Serial.println("");
 }
 
@@ -116,19 +122,22 @@ void checkSensorValues()
 
 void setup()
 {
-  pinMode(PIN_LED_COLLECTION, OUTPUT);
-  pinMode(PIN_LED_SENSOR, OUTPUT);
-
   Serial.begin(SERIAL_BAUD);
   Serial.println("init...");
+  Serial.println(sandbox ? "-- sandbox --" : "+++");
 
-  digitalWrite(PIN_LED_COLLECTION, HIGH);
+  if(!sandbox)
+  {
+    pinMode(PIN_LED_COLLECTION, OUTPUT);
+    digitalWrite(PIN_LED_COLLECTION, HIGH);
+    setupWifi();
+    setupCloudIoT();
+    digitalWrite(PIN_LED_COLLECTION, LOW);
+  }
 
-  setupWifi();
-  setupCloudIoT();
-
-  digitalWrite(PIN_LED_COLLECTION, LOW);
   delay(500);
+  
+  pinMode(PIN_LED_SENSOR, OUTPUT);
   digitalWrite(PIN_LED_SENSOR, HIGH);
 
   beginWire(I2C_SDA, I2C_SCL);
@@ -139,10 +148,10 @@ void setup()
   mpuSensor.setThreshold(&minThreshold, &maxThreshold);
 
   Serial.print("minThreshold: ");
-  Serial.print(minThreshold.vector);
+  Serial.print(minThreshold.Vector);
   Serial.print("\t");
   Serial.print("maxThreshold: ");
-  Serial.print(maxThreshold.vector);
+  Serial.print(maxThreshold.Vector);
 
   digitalWrite(PIN_LED_SENSOR, LOW);
 
@@ -151,11 +160,11 @@ void setup()
 
 void loop()
 {
-  if (!mqtt->loop())
+  if (!sandbox && !mqtt->loop())
   {
     mqtt->mqttConnect();
   }
-
+  
   delay(10);
 
   mpuSensor.readSensorValues(&sensorValues, true);

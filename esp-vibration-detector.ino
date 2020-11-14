@@ -19,9 +19,9 @@ const bool sandbox = false;
 MPU6050Module mpuSensor(I2C_MPU_DEVICE_REGISTER);
 MPU6050Data sensorValues;
 
-// covers E 1.5
-MPU6050Data minThreshold = {0.0727};
-MPU6050Data maxThreshold = {0.0827};
+// covers E 1.6
+MPU6050Data minThreshold = {0.0430};
+MPU6050Data maxThreshold = {0.0545};
 
 int sensorVectorCollectionSize = 0;
 float sensorVectorValues[COLLECTION_BUFFER];

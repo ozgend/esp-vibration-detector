@@ -11,8 +11,9 @@
 #define I2C_SDA D3
 #define PIN_LED_COLLECTION 15
 #define PIN_LED_SENSOR 13
-#define COLLECTION_BUFFER 1024
-#define COLLECTION_COOLDOWN_MILLIS 650
+#define COLLECTION_BUFFER 256
+#define COLLECTION_COOLDOWN_MILLIS 750
+#define SENSOR_VALUE_SCALING 1000
 
 MPU6050Module mpuSensor(I2C_MPU_DEVICE_REGISTER);
 
@@ -23,10 +24,7 @@ MPU6050Data maxThreshold = {0, 0, 0, 0, -710, -16, 222};
 int sensorCollectionSize = 0;
 String serializedPayload;
 
-int16_t xValues[COLLECTION_BUFFER];
-int16_t yValues[COLLECTION_BUFFER];
-int16_t zValues[COLLECTION_BUFFER];
-
+long xyzVectorValues[COLLECTION_BUFFER];
 long sensorNextCooldownMillis = 0;
 bool isCollectionRunning = false;
 
@@ -36,21 +34,15 @@ String serializeSensorValues()
 
   DynamicJsonDocument payload(1024);
   JsonArray items = payload.to<JsonArray>();
-  JsonObject item = items.createNestedObject();
 
   for (int i = 0; i <= sensorCollectionSize; i++)
   {
-    item["x"] = xValues[i];
-    item["y"] = yValues[i];
-    item["z"] = zValues[i];
-    items.add(item);
+    items.add(xyzVectorValues[i]);
   }
 
   serializeJson(payload, serializedPayload);
 
-  memset(xValues, 0, sizeof(xValues));
-  memset(yValues, 0, sizeof(yValues));
-  memset(zValues, 0, sizeof(zValues));
+  memset(xyzVectorValues, 0, sizeof(xyzVectorValues));
   sensorCollectionSize = 0;
 
   Serial.println("payload created.");
@@ -66,9 +58,7 @@ void collectSensorValues()
     publishSensorValues();
   }
 
-  xValues[sensorCollectionSize] = sensorValues.GyroX;
-  yValues[sensorCollectionSize] = sensorValues.GyroY;
-  zValues[sensorCollectionSize] = sensorValues.GyroZ;
+  xyzVectorValues[sensorCollectionSize] = (int)(sensorValues.vector / SENSOR_VALUE_SCALING);
 
   sensorCollectionSize++;
 }
@@ -78,18 +68,18 @@ void publishSensorValues()
   if (sensorCollectionSize > 0)
   {
     Serial.println("publishing payload...");
-    publishTelemetry(serializeSensorValues());
+    //publishTelemetry(serializeSensorValues());
     Serial.println("payload published.");
   }
 }
 
 void plotSensorValues()
 {
-  Serial.print(sensorValues.GyroX);
+  Serial.print(sensorValues.vector);
   Serial.print("\t");
-  Serial.print(sensorValues.GyroY);
+  Serial.print(minThreshold.vector);
   Serial.print("\t");
-  Serial.print(sensorValues.GyroZ);
+  Serial.print(maxThreshold.vector);
   Serial.print("\t");
   Serial.print(isCollectionRunning ? 5000 : 0);
   Serial.println("");
@@ -147,6 +137,12 @@ void setup()
 
   mpuSensor.initialize();
   mpuSensor.setThreshold(&minThreshold, &maxThreshold);
+
+  Serial.print("minThreshold: ");
+  Serial.print(minThreshold.vector);
+  Serial.print("\t");
+  Serial.print("maxThreshold: ");
+  Serial.print(maxThreshold.vector);
 
   digitalWrite(PIN_LED_SENSOR, LOW);
 

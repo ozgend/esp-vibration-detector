@@ -22,6 +22,7 @@ struct MPU6050Data
   int16_t GyroX;
   int16_t GyroY;
   int16_t GyroZ;
+  long vector;
   bool isThresholdExceeded;
 };
 

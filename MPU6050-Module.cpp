@@ -32,6 +32,7 @@ void MPU6050Module ::readSensorValues(MPU6050Data *data, bool checkThreshold)
   data->GyroX = (((int16_t)readWire() << 8) | readWire());
   data->GyroY = (((int16_t)readWire() << 8) | readWire());
   data->GyroZ = (((int16_t)readWire() << 8) | readWire());
+  data->vector = (data->GyroX * data->GyroY * data->GyroZ);
 
   if (_isThresholdSet)
   {
@@ -43,21 +44,28 @@ void MPU6050Module::setThreshold(MPU6050Data *min, MPU6050Data *max)
 {
   _minThreshold = min;
   _maxThreshold = max;
+  _minThreshold->vector = (min->GyroX * min->GyroY * min->GyroZ);
+  _maxThreshold->vector = (max->GyroX * max->GyroY * max->GyroZ);
   _isThresholdSet = true;
 }
 
 bool MPU6050Module::isThresholdExceeded(MPU6050Data *data)
 {
   // faulty data check
-  if ((data->GyroX == -1 * data->GyroY == -1 * data->GyroZ) == -1)
+  if (data->vector == -1)
   {
     return false;
   }
 
-  if (data->GyroX > _maxThreshold->GyroX || data->GyroX < _minThreshold->GyroX || data->GyroY > _maxThreshold->GyroY || data->GyroY < _minThreshold->GyroY || data->GyroZ > _maxThreshold->GyroZ || data->GyroZ < _minThreshold->GyroZ)
+  if (data->vector < _minThreshold->vector || data->vector > _maxThreshold->vector)
   {
     return true;
   }
+
+  // if (data->GyroX > _maxThreshold->GyroX || data->GyroX < _minThreshold->GyroX || data->GyroY > _maxThreshold->GyroY || data->GyroY < _minThreshold->GyroY || data->GyroZ > _maxThreshold->GyroZ || data->GyroZ < _minThreshold->GyroZ)
+  // {
+  //   return true;
+  // }
 
   return false;
 }
